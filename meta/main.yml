@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: willyhu
+  description: Install Cassandra
+  company: 
+  license: MIT
+  min_ansible_version: 2.1
+  platforms:
+  - name: Ubuntu
+    versions:
+    - trusty
+    - xenial
+  - name: Debian
+    versions:
+    - jessie
+  - name: RedHat
+    versions:
+    - 7
+  categories:
+  - database
+dependencies: []
+

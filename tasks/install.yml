@@ -1,0 +1,82 @@
+---
+
+- include: debian-install.yml
+  when: ansible_os_family == 'Debian'
+
+
+- include: redhat-install.yml
+  when: ansible_os_family == 'RedHat'
+
+
+- name: check has_installed
+  shell: ls /opt/cassandra/bin/cassandra
+  register: has_installed
+  ignore_errors: yes
+
+
+- name: stop cassandra service
+  service:
+    name: cassandra
+    state: stopped
+  when: has_installed.rc == 0
+  ignore_errors: yes
+
+
+- name: delete cassandra directories
+  file:
+    name: "{{item}}"
+    state: absent
+  with_items:
+    - /opt/cassandra
+    - /var/run/cassandra
+    - /etc/security/limits.d/cassandra.conf
+    - /etc/sysctl.d/cassandra.conf
+    - /etc/init.d/cassandra
+    - /lib/systemd/system/cassandra.service
+  when: has_installed.rc == 0
+
+
+- name: copy cassandra package
+  copy:
+    src: apache-cassandra-3.11.0-bin.tar.gz
+    dest: /tmp
+
+
+- name: create cassandra directories
+  file:
+    name: "{{item}}"
+    state: directory
+  with_items:
+    - /opt/cassandra
+    - /var/run/cassandra
+
+
+- name: extract cassandra package
+  shell: tar -zxvf /tmp/apache-cassandra-3.11.0-bin.tar.gz -C /opt/cassandra --strip-components 1
+
+
+- name: create cassandra user and group
+  user:
+    name: cassandra
+    createhome: no
+    home: /opt/cassandra
+    system: yes
+    state: present
+
+
+- name: change owner and group for cassandra directories
+  file:
+    path: "{{item}}"
+    owner: cassandra
+    group: cassandra
+    recurse: yes
+  with_items:
+    - /opt/cassandra
+    - /var/run/cassandra
+
+
+- name: delete package file
+  file:
+    path: "/tmp/apache-cassandra-3.11.0-bin.tar.gz"
+    state: absent
+

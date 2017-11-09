@@ -1,0 +1,79 @@
+---
+
+- name: copy cassandra config files to /opt/cassandra/conf
+  template:
+    src: conf/{{item}}.j2
+    dest: /opt/cassandra/conf/{{item}}
+    owner: cassandra
+    group: cassandra
+    mode: 0644
+  with_items:
+    - cassandra-env.sh
+    - cassandra-rackdc.properties
+    - cassandra-topology.properties
+    - cassandra.yaml
+    - jvm.options
+
+
+- name: copy system limits config file to /etc/security/limits.d
+  template:
+    src: limits/{{item}}.j2
+    dest: /etc/security/limits.d/{{item}}
+  with_items:
+    - cassandra.conf
+
+
+- name: copy system config file to /etc/sysctl.d
+  template:
+    src: sysctl/{{item}}.j2
+    dest: /etc/sysctl.d/{{item}}
+  with_items:
+    - cassandra.conf
+
+
+- name: set system config for cassandra
+  shell: sysctl -p /etc/sysctl.d/cassandra.conf
+
+
+- name: check systemctl
+  shell: /usr/bin/which systemctl
+  register: systemctl_exist
+  ignore_errors: yes
+
+
+- name: copy systemd file to /lib/systemd/system
+  copy:
+    src: systemd/{{item}}
+    dest: /lib/systemd/system/{{item}}
+    mode: 0755
+  with_items:
+    - cassandra.service
+  when:
+    - systemctl_exist.rc == 0
+
+
+- name: enable cassandra service
+  shell: /bin/systemctl daemon-reload && /bin/systemctl enable cassandra.service
+  when: systemctl_exist.rc == 0
+
+
+- name: copy SysV file to /etc/init.d
+  copy:
+    src: sysv/{{item}}
+    dest: /etc/init.d/{{item}}
+    mode: 0755
+  with_items:
+    - cassandra
+  when: systemctl_exist.rc != 0
+
+
+- name: update-rc.d cassandra service
+  shell: /usr/sbin/update-rc.d cassandra defaults
+  when: systemctl_exist.rc != 0
+
+
+- name: restart cassandra service
+  service:
+    name: cassandra
+    state: restarted
+
